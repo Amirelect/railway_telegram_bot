@@ -1,8 +1,32 @@
 import os
+import tempfile
 import yt_dlp
 
 
 DOWNLOAD_DIR = "/tmp/telegram_youtube"
+
+def create_cookie_file():
+    cookies = os.environ.get("YOUTUBE_COOKIES")
+
+    if not cookies:
+        raise RuntimeError(
+            "YOUTUBE_COOKIES environment variable is not set."
+        )
+
+    cookie_file = os.path.join(
+        tempfile.gettempdir(),
+        "youtube_cookies.txt"
+    )
+
+    with open(
+        cookie_file,
+        "w",
+        encoding="utf-8",
+        newline=""
+    ) as f:
+        f.write(cookies)
+
+    return cookie_file
 
 
 def ensure_download_dir():
@@ -13,11 +37,14 @@ def get_video_info(url: str):
     """
     Get YouTube video information without downloading the video.
     """
+    
+    cookie_file = create_cookie_file()
 
     ydl_opts = {
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
+        "cookiefile": cookie_file,
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -34,6 +61,8 @@ def download_video(url: str, progress_hook=None):
         tuple[str, dict]:
             downloaded file path and video information
     """
+    
+    cookie_file = create_cookie_file()
 
     ensure_download_dir()
 
@@ -47,6 +76,15 @@ def download_video(url: str, progress_hook=None):
 
         "noplaylist": True,
 
+        "cookiefile": cookie_file,
+
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/131.0.0.0 Safari/537.36"
+            ),
+        },
         # Prefer MP4 video + M4A audio.
         # Limit height to 720p for a reasonable Telegram file size.
         "format": (
